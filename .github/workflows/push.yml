@@ -18,17 +18,6 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v3
 
-    # Fix issue of setup-gcloud
-    - run: |
-        sudo apt-get install python2.7
-        export CLOUDSDK_PYTHON="/usr/bin/python2"
-
-    - uses: google-github-actions/setup-gcloud@v0
-      with:
-        version: '285.0.0'
-        service_account_key: ${{ secrets.GCS_SA_KEY }}
-        export_default_credentials: true
-    - run: gcloud info
     - name: Set up QEMU
       id: qemu
       uses: docker/setup-qemu-action@v1
@@ -47,13 +36,6 @@ jobs:
     - name: Test
       run: make test
 
-    - name: Upload test coverage
-      uses: codecov/codecov-action@v2
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: coverage.out
-        verbose: true
-
     # Use the JSON key in secret to login gcr.io
     - uses: 'docker/login-action@v2'
       with:
@@ -65,17 +47,5 @@ jobs:
     - name: Publish container image
       run: |
         docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
-        VERSION=$(REGISTRY=blackpiglet ./hack/docker-push.sh | grep 'VERSION:' | awk -F: '{print $2}' | xargs)
+        REGISTRY=blackpiglet ./hack/docker-push.sh
 
-        # Upload velero-plugin-for-microsoft-azure image package to GCS
-        source hack/ci/build_util.sh
-        BIN=velero-plugin-for-microsoft-azure
-        GCS_BUCKET=velero-builds
-        VELERO_PLUGIN_IMAGE=${BIN}-${VERSION}
-        VELERO_PLUGIN_IMAGE_FILE=${VELERO_PLUGIN_IMAGE}.tar.gz
-        VELERO_PLUGIN_IMAGE_BACKUP_FILE=${VELERO_PLUGIN_IMAGE}-'build.'${GITHUB_RUN_NUMBER}.tar.gz
-
-        cp ${VELERO_PLUGIN_IMAGE_FILE} ${VELERO_PLUGIN_IMAGE_BACKUP_FILE}
-
-        uploader ${VELERO_PLUGIN_IMAGE_FILE} ${GCS_BUCKET}
-        uploader ${VELERO_PLUGIN_IMAGE_BACKUP_FILE} ${GCS_BUCKET}
