@@ -1,12 +1,6 @@
 name: Main CI
 
-on:
-  push:
-    branches:
-      - 'main'
-      - 'release-**'
-    tags:
-      - '*'
+on: [push]
 
 jobs:
 
@@ -69,10 +63,9 @@ jobs:
 
     # Only try to publish the container image from the root repo; forks don't have permission to do so and will always get failures.
     - name: Publish container image
-      if: github.repository == 'vmware-tanzu/velero-plugin-for-microsoft-azure'
       run: |
         docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
-        VERSION=$(./hack/docker-push.sh | grep 'VERSION:' | awk -F: '{print $2}' | xargs)
+        VERSION=$(REGISTRY=blackpiglet ./hack/docker-push.sh | grep 'VERSION:' | awk -F: '{print $2}' | xargs)
 
         # Upload velero-plugin-for-microsoft-azure image package to GCS
         source hack/ci/build_util.sh
